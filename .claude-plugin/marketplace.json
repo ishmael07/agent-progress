@@ -1,0 +1,14 @@
+{
+  "name": "agent-progress",
+  "description": "Agent Progress: live progress bars for your Claude Code agents.",
+  "owner": {
+    "name": "ishmael07"
+  },
+  "plugins": [
+    {
+      "name": "agent-progress",
+      "source": "./",
+      "description": "Live progress bars for your Claude Code agents: what each one is doing in plain words, how far along it is, and how long is left."
+    }
+  ]
+}

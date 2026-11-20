@@ -1,0 +1,12 @@
+{
+  "name": "agent-progress",
+  "version": "1.0.0",
+  "description": "Live progress bars for your Claude Code agents: what each one is doing in plain words, how far along it is, and how long is left.",
+  "author": {
+    "name": "ishmael07",
+    "url": "https://github.com/ishmael07"
+  },
+  "repository": "https://github.com/ishmael07/agent-progress",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
