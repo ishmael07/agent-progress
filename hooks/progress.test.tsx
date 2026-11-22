@@ -1,5 +1,6 @@
 import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
+import { labelsFor } from './register'
 
 const BAND = {
   plugin: 'agent-progress',
@@ -418,4 +419,44 @@ test('the table sits on the terminal\'s own background, dark or light', async ($
   await $.command.run({ command: 'progress', args: '' } as any)
   expect(seen.opened.filter(Boolean)).toEqual(['transparent', 'transparent'])
   seen.theme = 'dark'
+})
+
+test("Claude's own work gets a bar too, labelled Claude, while there are no helper agents", async ($, on) => {
+  engine(on)
+  on('turn.start', () => ({ turnId: 't' }) as never)
+  const clock = mock.clock(on, { now: 1_000_000 })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.prompt.submit({ text: 'fix the login bug on the settings page please' } as any)
+  // an agent's report arriving as a prompt doesn't rename it
+  await $.prompt.submit({ text: '<agent-message from="a1">report</agent-message>' } as any)
+  await $.turn.start({ turnId: 't' } as any)
+  await $.tool.call({ tool: 'Read', tool_use_id: 'r1', file_path: '/x/login.ts' } as any)
+  await clock.advance(1_000)
+  let ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  // too soon to be worth a bar
+  expect(await texts(ui)).not.toContain('Claude')
+  await ui.unmount()
+  await clock.advance(4_000)
+  ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  const all = await texts(ui)
+  expect(all).toContain('Claude is working')
+  expect(all).toMatch(/Claude\s+Fix the login bug/)
+  expect(all).toContain('Reading login.ts')
+  await ui.unmount()
+  await $.turn.complete({ answer: 'ok', durationMs: 1, isAborted: false, turnId: 't' } as any)
+  ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await texts(ui)).toContain('✔')
+  await ui.unmount()
+})
+
+test('a new agent never shares a label with a finished one still showing', async () => {
+  const row = (id: string, startedAt: number, endedAt?: number) =>
+    ({ id, kind: 'agent', title: id, task: id, detail: '', startedAt, endedAt, status: endedAt ? 'done' : 'running', steps: [], tools: 0 }) as any
+  // the first batch ends at 10s; one agent starts 5s later, while it still shows
+  let labels = labelsFor([row('a', 0, 10_000), row('b', 15_000)], 16_000)
+  expect(labels.get('a')).toBe('Agent 1')
+  expect(labels.get('b')).toBe('Agent 2')
+  // long after the first batch left the screen, numbering starts again
+  labels = labelsFor([row('a', 0, 10_000), row('c', 100_000)], 101_000)
+  expect(labels.get('c')).toBe('Agent 1')
 })

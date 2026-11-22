@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2
+
+- **Claude's own work.** A bar labelled Claude shows while Claude itself works on your request, not just its helper agents: your request as the title, what it's doing right now, and its checklist when it keeps one. Quick replies don't show one. Turn it off in `/config`.
+
 ## 1.1.1
 
 - **Cleaner rows.** Each running agent's step now sits on its own line under its bar ("Step 3 of 5", then the step), so nothing is crammed onto one line.

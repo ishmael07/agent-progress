@@ -9,18 +9,21 @@
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-  <nav class="nav">
-    <a class="brand" href="./"><img class="brand-mark" src="assets/mark.svg" alt=""> Agent Progress</a>
-    <div class="nav-links">
+  <div class="reading" aria-hidden="true"><span></span></div>
+
+  <header class="top">
+    <a class="mark" href="./"><img src="assets/mark.svg" alt=""> Agent Progress</a>
+    <nav>
       <a href="./">Home</a>
       <a href="https://github.com/ishmael07/agent-progress">GitHub</a>
-    </div>
-  </nav>
+      <span class="ver">v1.1.2</span>
+    </nav>
+  </header>
 
   <main class="doc">
-    <h1 class="reveal">Set it up</h1>
-    <p class="lede reveal d1">A few steps from nothing to live progress bars. Already use Claude Code? Skip to <a href="#add">step 3</a>.</p>
-    <div class="toc reveal d2">
+    <h1>Set it up</h1>
+    <p class="sub">A few steps from nothing to live progress bars. Already use Claude Code? Skip to <a href="#add">step 3</a>.</p>
+    <div class="toc">
       <a href="#claude">Install Claude Code</a>
       <a href="#signin">Sign in</a>
       <a href="#add">Add Agent Progress</a>
@@ -30,7 +33,7 @@
       <a href="#help">Troubleshooting</a>
     </div>
 
-    <h2 id="claude"><span class="step-n">1</span>Install Claude Code</h2>
+    <h2 id="claude"><span class="n">1</span>Install Claude Code</h2>
     <p>Open a terminal. On a Mac, press <code>Cmd</code> + <code>Space</code>, type <b>Terminal</b> and press Enter. On Windows, open the Start menu and type <b>PowerShell</b>. Then paste the one line for your system below and press Enter. Full details are in <a href="https://code.claude.com/docs/en/setup">Anthropic's setup guide</a>.</p>
     <h3>macOS, Linux and WSL</h3>
     <pre><code>curl -fsSL https://claude.ai/install.sh | bash</code><button class="copy" data-copy>Copy</button></pre>
@@ -41,12 +44,12 @@
     <p>Open a new terminal window and check it worked. You should see a version number.</p>
     <pre><code>claude --version</code><button class="copy" data-copy>Copy</button></pre>
 
-    <h2 id="signin"><span class="step-n">2</span>Start it and sign in</h2>
+    <h2 id="signin"><span class="n">2</span>Start it and sign in</h2>
     <p>Go to a folder you want to work in, then start Claude Code. Replace <code>your-project</code> with your folder, or use <code>cd ~/Desktop</code> to just try it out. The first time, a browser window opens so you can sign in with your Claude account. When you come back, you'll see a box to type in: that's the Claude Code prompt.</p>
     <pre><code>cd your-project
 claude</code><button class="copy" data-copy>Copy</button></pre>
 
-    <h2 id="add"><span class="step-n">3</span>Add Agent Progress</h2>
+    <h2 id="add"><span class="n">3</span>Add Agent Progress</h2>
     <p>In the Claude Code prompt from step 2, paste this line and press Enter. It starts with <code>/</code> because it's a Claude Code command, not a terminal command.</p>
     <pre><code>/plugin install agent-progress --marketplace ishmael07/agent-progress</code><button class="copy" data-copy>Copy</button></pre>
     <ol>
@@ -58,14 +61,14 @@ claude</code><button class="copy" data-copy>Copy</button></pre>
     <pre><code>claude plugin install agent-progress --marketplace ishmael07/agent-progress</code><button class="copy" data-copy>Copy</button></pre>
     <p>In the Claude desktop app: click <b>+</b> next to the prompt box, then <b>Plugins</b>, <b>Add marketplace</b> with <code>ishmael07/agent-progress</code>, then <b>Add plugin</b>.</p>
 
-    <h2 id="try"><span class="step-n">4</span>Try it</h2>
+    <h2 id="try"><span class="n">4</span>Try it</h2>
     <p>Ask for something that uses a few agents at once, for example:</p>
     <pre class="wrap-text"><code>Use 3 agents in parallel to look around this project and tell me how it's organized.</code><button class="copy" data-copy>Copy</button></pre>
     <p>A bar appears above the prompt for each agent the moment it starts. Click a row to see how that agent helps with your request, plus its checklist.</p>
 
     <h2 id="use">Using it</h2>
     <h3>The bars above the prompt</h3>
-    <p>One bar per running agent: which agent it is (its name, or Agent 1, Agent 2…), what it was asked to do, % done, the step it's on and time left. Finished agents turn green and leave after 30 seconds. Click a row to open it, and click the summary line on top to open the table.</p>
+    <p>One bar for Claude while it works on your request, and one per running agent: which agent it is (its name, or Agent 1, Agent 2…), what it was asked to do, % done, the step it's on and time left. Finished agents turn green and leave after 30 seconds. Click a row to open it, and click the summary line on top to open the table.</p>
     <h3>Commands</h3>
     <table>
       <tr><th>Command</th><th>What it does</th></tr>
@@ -81,6 +84,7 @@ claude</code><button class="copy" data-copy>Copy</button></pre>
     <table>
       <tr><th>Setting</th><th>Default</th><th>What it does</th></tr>
       <tr><td>Ask agents for a step list</td><td>On</td><td>Adds a short note to each subagent's instructions asking it to share a plain step list and check it off. This is what makes the % accurate.</td></tr>
+      <tr><td>Show Claude's own work</td><td>On</td><td>A bar for Claude itself while it works on your request, not just its helper agents.</td></tr>
       <tr><td>Plain-language summaries</td><td>On</td><td>When an agent doesn't say how it helps, Agent Progress writes one sentence about it using Claude Haiku.</td></tr>
       <tr><td>Show bars above the prompt</td><td>On</td><td>The live bars above the prompt. The table works either way.</td></tr>
       <tr><td>Notify when agents finish</td><td>Off</td><td>A system notification when all agents are done.</td></tr>
@@ -104,7 +108,7 @@ claude</code><button class="copy" data-copy>Copy</button></pre>
 
     <h2 id="help">Troubleshooting</h2>
     <h3>No bars show up</h3>
-    <p>Bars appear only while agents run. Ask for parallel agents to test it. If still nothing, run <code>/progress on</code>, check that <b>Show bars above the prompt</b> is on in <code>/config</code>, and make sure Claude Code is up to date (<code>claude update</code>). Agent Progress uses plugin mods, an early-access part of Claude Code.</p>
+    <p>Bars appear while Claude or its agents work, after a few seconds (quick replies don't show one). Ask for parallel agents to test it. If still nothing, run <code>/progress on</code>, check that <b>Show bars above the prompt</b> is on in <code>/config</code>, and make sure Claude Code is up to date (<code>claude update</code>). Agent Progress uses plugin mods, an early-access part of Claude Code.</p>
     <h3>The % has a ~ in front</h3>
     <p>That agent didn't share a step list, so its bar is an estimate. Custom agents with a fixed tool list can't use the progress tool.</p>
     <h3>No time left yet</h3>
@@ -114,11 +118,9 @@ claude</code><button class="copy" data-copy>Copy</button></pre>
     <p style="margin-top:56px">Still stuck? <a href="https://github.com/ishmael07/agent-progress/issues">Open an issue on GitHub</a>.</p>
   </main>
 
-  <footer>
-    <div class="wrap">
-      <span>Agent Progress · MIT · Not affiliated with Anthropic</span>
-      <span><a href="./">Home</a> &nbsp;·&nbsp; <a href="https://github.com/ishmael07/agent-progress">GitHub</a></span>
-    </div>
+  <footer class="foot">
+    <span>Agent Progress · MIT · Not affiliated with Anthropic</span>
+    <nav><a href="./">Home</a><a href="https://github.com/ishmael07/agent-progress">GitHub</a></nav>
   </footer>
   <script src="assets/site.js"></script>
 </body>

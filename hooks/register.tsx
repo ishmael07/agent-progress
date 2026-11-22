@@ -31,7 +31,7 @@ const earlierAtom = atom({ plugin: 'agent-progress', key: 'showEarlier' } as con
 const announcedAtom = atom({ plugin: 'agent-progress', key: 'announcedBatch' } as const, 0)
 
 /** The settings people can change in /config. */
-type Settings = { checklists: boolean; summaries: boolean; strip: boolean; notify: boolean }
+type Settings = { checklists: boolean; summaries: boolean; strip: boolean; notify: boolean; claude: boolean }
 
 export function settingsFrom(options: PluginOptions | undefined): Settings {
   const on = (key: string, fallback: boolean) =>
@@ -41,6 +41,7 @@ export function settingsFrom(options: PluginOptions | undefined): Settings {
     summaries: on('summaries', true),
     strip: on('strip', true),
     notify: on('notify', false),
+    claude: on('claude', true),
   }
 }
 
@@ -191,8 +192,10 @@ export function labelsFor(rows: readonly Row[], now: number): Map<string, string
   let n = 0
   let groupEnd = -Infinity
   for (const r of top) {
-    if (r.kind !== 'main' && r.startedAt > groupEnd) n = 0
-    if (r.kind === 'main') labels.set(r.id, 'Main')
+    // start again at Agent 1 only once the last batch has left the screen, so a
+    // new agent never shares a name with a finished one still showing
+    if (r.kind !== 'main' && r.startedAt > groupEnd + LINGER_MS) n = 0
+    if (r.kind === 'main') labels.set(r.id, 'Claude')
     else if (r.kind === 'workflow') labels.set(r.id, 'Workflow')
     else labels.set(r.id, r.label ?? `Agent ${++n}`)
     if (r.kind !== 'main') groupEnd = Math.max(groupEnd, isLive(r) ? Infinity : (r.endedAt ?? now))
@@ -411,13 +414,29 @@ async function touch($: EngineInterface, id: string, fn: (row: Row) => Row, make
   })
 }
 
-function mainRow(now: number): Row {
+/** A prompt the person typed themselves, as opposed to one Claude Code passed in for them. */
+export function isTypedRequest(e: { text: string; isMeta?: true; command?: unknown }): boolean {
+  if (e.isMeta || e.command) return false
+  return !/^\s*<(agent-message|task-notification|local-command|command-|system-reminder|bash-)/.test(e.text)
+}
+
+/** A request, shortened to a title: its first line, cut at a word. */
+export function requestTitle(request: string): string {
+  const line = request.replace(/\s+/g, ' ').trim()
+  // never a tag Claude Code passed in for the person (an agent's report, a notice)
+  if (!line || line.startsWith('<')) return 'Your request'
+  if (line.length <= 56) return cap(line)
+  const cut = line.slice(0, 56)
+  return cap(cut.slice(0, Math.max(24, cut.lastIndexOf(' '))).replace(/[,.;:]$/, '')) + '…'
+}
+
+function mainRow(now: number, request = ''): Row {
   return {
     id: 'main',
     kind: 'main',
-    title: 'Your request',
+    title: requestTitle(request),
     task: '',
-    detail: '',
+    detail: 'Thinking',
     startedAt: now,
     stepAt: now,
     status: 'running',
@@ -426,14 +445,23 @@ function mainRow(now: number): Row {
   }
 }
 
-/** Keeps the main checklist's status in step with its checklist. */
-function settle(row: Row, now: number): Row {
-  if (row.kind !== 'main') return row
-  const isDone = row.steps.length > 0 && row.steps.every(s => s.status === 'completed')
-  if (isDone && row.status !== 'done') return { ...row, status: 'done', endedAt: now }
-  if (!isDone && row.status === 'done') return { ...row, status: 'running', endedAt: undefined }
-  return row
+/** Claude's own row shows once it has been at work a few seconds, so quick replies don't flash a bar. */
+const MAIN_AFTER_MS = 3_000
+/** The summary line: who is working, e.g. "Claude + 3 agents working". */
+export function whoIsWorking(shown: readonly Row[]): string {
+  const agents = shown.filter(r => isLive(r) && r.kind !== 'main').length
+  const claude = shown.some(r => isLive(r) && r.kind === 'main')
+  const them = agents ? `${agents} ${agents === 1 ? 'agent' : 'agents'}` : ''
+  if (claude && them) return `Claude + ${them} working`
+  if (claude) return 'Claude is working'
+  return them ? `${them} working` : 'All done'
 }
+
+/** Claude's own row goes above its helpers. */
+export const mainFirst = (a: Row, b: Row) => (a.kind === 'main' ? 0 : 1) - (b.kind === 'main' ? 0 : 1)
+
+export const isWorthShowing = (row: Row, now: number) =>
+  row.kind !== 'main' || (row.endedAt ?? now) - row.startedAt >= MAIN_AFTER_MS
 
 async function setSteps($: EngineInterface, id: string, steps: (old: Step[]) => Step[]) {
   const now = await $.clock.now()
@@ -444,7 +472,7 @@ async function setSteps($: EngineInterface, id: string, steps: (old: Step[]) => 
       const next = steps(row.steps)
       // a step finished: the next one starts its clock now
       const moved = doneCount(next) !== doneCount(row.steps) || row.steps.length === 0
-      return settle({ ...row, steps: next, stepAt: moved ? now : row.stepAt }, now)
+      return { ...row, steps: next, stepAt: moved ? now : row.stepAt }
     },
     id === 'main' ? () => mainRow(now) : undefined,
   )
@@ -587,7 +615,9 @@ export const register: Register = (on, options) => {
   })
 
   on('prompt.submit', async ($, e, next) => {
-    await update($, requestAtom, () => e.text.slice(0, 2_000))
+    // only what the person typed names Claude's row: not an agent's report, a
+    // background notice or a slash command passed in as a prompt
+    if (isTypedRequest(e)) await update($, requestAtom, () => e.text.slice(0, 2_000))
     // A finished checklist of the main conversation belongs to the last request.
     await update($, rowsAtom, rows => rows.filter(r => !(r.id === 'main' && r.status === 'done')))
     return next(e)
@@ -671,9 +701,8 @@ export const register: Register = (on, options) => {
     const a = e as unknown as Record<string, unknown>
     const id = e.agentId ?? 'main'
 
-    if (e.agentId) {
-      await touch($, e.agentId, row => ({ ...row, tools: row.tools + 1, detail: describe(e.tool, a) }))
-    }
+    // what this agent, or Claude itself, is doing right now
+    await touch($, id, row => ({ ...row, tools: row.tools + 1, detail: describe(e.tool, a) }))
 
     if (e.tool === 'Workflow' && e.tool_use_id) {
       const now = await $.clock.now()
@@ -743,11 +772,22 @@ export const register: Register = (on, options) => {
 
   // ---- endings
 
+  on('turn.start', async ($, e, next) => {
+    const res = await next(e)
+    if (e.agentId || !settings.claude) return res
+    const [now, request] = await Promise.all([$.clock.now(), read($, requestAtom)])
+    // a new turn starts Claude's own row afresh; its checklist comes back with its next update
+    await touch($, 'main', row => (isLive(row) ? row : mainRow(now, request)), () => mainRow(now, request))
+    return res
+  })
+
   on('turn.complete', async ($, e, next) => {
     const res = await next(e)
     if (e.agentId) {
       await end($, e.agentId, e.isAborted ? 'stopped' : 'done')
       await announceIfDone($, settings)
+    } else {
+      await end($, 'main', e.isAborted ? 'stopped' : 'done')
     }
     return res
   })
@@ -820,7 +860,7 @@ export const register: Register = (on, options) => {
     const now = Math.max(tick, ...rows.map(r => r.startedAt), 0)
     const W = Math.max(40, (e.viewport?.columns ?? 100) - 4)
     const batch = currentBatch(rows, now)
-    const shown = rows.filter(r => !r.parent && (isLive(r) || batch.includes(r)))
+    const shown = rows.filter(r => !r.parent && isWorthShowing(r, now) && (isLive(r) || batch.includes(r))).sort(mainFirst)
     if (shown.length === 0) {
       return (
         <Box flexDirection="column">
@@ -830,7 +870,7 @@ export const register: Register = (on, options) => {
       )
     }
     const all = overall(rows, now)
-    const running = shown.filter(isLive).length
+    const running = shown.filter(r => isLive(r) && r.kind !== 'main').length
     const labels = labelsFor(rows, now)
     const tagW = labelWidth(labels, shown)
     const barW = W >= 110 ? 22 : W >= 80 ? 16 : 10
@@ -840,8 +880,8 @@ export const register: Register = (on, options) => {
     return (
       <Box flexDirection="column">
         <Text dimColor>
-          {(running > 0 ? `${running} ${running === 1 ? 'agent' : 'agents'} working` : 'All done') +
-            (all ? ` · ${pct(all)}` : '') +
+          {whoIsWorking(shown) +
+            (all && running > 0 ? ` · ${pct(all)}` : '') +
             (all?.eta !== undefined ? ` · ${timeLeft(all.eta)}` : '')}
         </Text>
         {shown.map(row => {
@@ -880,8 +920,11 @@ export const register: Register = (on, options) => {
     ])
     const now = Math.max(tick, ...rows.map(r => r.startedAt))
     const shown = rows.filter(
-      r => !r.parent && (isLive(r) || (r.endedAt !== undefined && now - r.endedAt < LINGER_MS)),
-    )
+      r =>
+        !r.parent &&
+        isWorthShowing(r, now) &&
+        (isLive(r) || (r.endedAt !== undefined && now - r.endedAt < LINGER_MS)),
+    ).sort(mainFirst)
     if (shown.length === 0) return next(e)
 
     const { Box, Button, Text } = $.ui.resolve(e)
@@ -896,9 +939,9 @@ export const register: Register = (on, options) => {
     const restW = Math.max(0, W - 2 - (tagW + 2) - titleW - 2 - barW - 1 - 4 - 3)
     const indent = 2 + tagW + 2
 
-    const running = shown.filter(isLive).length
+    const running = shown.filter(r => isLive(r) && r.kind !== 'main').length
     const head =
-      (running > 0 ? `${running} ${running === 1 ? 'agent' : 'agents'} working` : 'All done') +
+      whoIsWorking(shown) +
       (all && running > 0 ? ` · ${pct(all)}` : '') +
       (all?.eta !== undefined ? ` · ${timeLeft(all.eta)}` : '')
 
@@ -983,8 +1026,11 @@ export const register: Register = (on, options) => {
 
     const top = rows.filter(r => !r.parent)
     const batch = currentBatch(rows, now)
-    const current = top.filter(r => isLive(r) || batch.includes(r))
-    const earlier = top.filter(r => !current.includes(r))
+    const recentMain = (r: Row) => r.kind === 'main' && r.endedAt !== undefined && now - r.endedAt < LINGER_MS
+    const current = top
+      .filter(r => isWorthShowing(r, now) && (isLive(r) || batch.includes(r) || recentMain(r)))
+      .sort(mainFirst)
+    const earlier = top.filter(r => !current.includes(r) && r.kind !== 'main')
     const all = overall(rows, now)
     const working = current.filter(isLive).length
     const finished = current.length - working
@@ -1219,7 +1265,7 @@ function stepLine(T: unknown, row: Row, width: number, indent = 2) {
  */
 export function plainTable(rows: readonly Row[], now: number): string {
   const batch = currentBatch(rows, now)
-  const shown = rows.filter(r => !r.parent && (isLive(r) || batch.includes(r)))
+  const shown = rows.filter(r => !r.parent && r.kind !== 'main' && (isLive(r) || batch.includes(r)))
   if (shown.length === 0) return 'No agents running.'
   const labels = labelsFor(rows, now)
   const lines = shown.map(row => {

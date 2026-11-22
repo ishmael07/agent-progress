@@ -1,18 +1,19 @@
-// Reveal on scroll, the hero's word-by-word entrance, and copy buttons.
+// Quiet fade-ins, the reading bar along the top, and copy buttons.
 (() => {
   const io = new IntersectionObserver((entries) => {
     for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
-  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.fade').forEach((el) => io.observe(el));
 
-  const hero = document.querySelector('.hero');
-  if (hero) {
-    hero.querySelectorAll('[data-words]').forEach((el) => {
-      let i = 0;
-      el.innerHTML = el.innerHTML.replace(/(<[^>]+>)|([^\s<]+)/g, (m, tag, word) =>
-        tag ? tag : `<span class="w" style="transition-delay:${(i++ * 0.06).toFixed(2)}s">${word}</span>`);
-    });
-    requestAnimationFrame(() => requestAnimationFrame(() => hero.classList.add('in')));
+  const bar = document.querySelector('.reading span');
+  if (bar) {
+    const paint = () => {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      bar.style.width = (max > 0 ? Math.min(100, (scrollY / max) * 100) : 0) + '%';
+    };
+    addEventListener('scroll', paint, { passive: true });
+    addEventListener('resize', paint);
+    paint();
   }
 
   document.querySelectorAll('[data-copy]').forEach((btn) => {
@@ -22,7 +23,7 @@
       const was = btn.textContent;
       btn.textContent = 'Copied';
       btn.classList.add('done');
-      setTimeout(() => { btn.textContent = was; btn.classList.remove('done'); }, 1600);
+      setTimeout(() => { btn.textContent = was; btn.classList.remove('done'); }, 1500);
     });
   });
 })();

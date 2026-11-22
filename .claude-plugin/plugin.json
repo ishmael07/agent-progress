@@ -1,6 +1,6 @@
 {
   "name": "agent-progress",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Live progress bars for your Claude Code agents: what each one is doing in plain words, how far along it is, and how long is left.",
   "author": {
     "name": "ishmael07",
@@ -28,6 +28,12 @@
       "type": "boolean",
       "title": "Plain-language summaries",
       "description": "When an agent doesn't say how it helps, Agent Progress writes one sentence about it using Claude Haiku (one small call per agent).",
+      "default": true
+    },
+    "claude": {
+      "type": "boolean",
+      "title": "Show Claude's own work",
+      "description": "A bar for Claude itself while it works on your request, not just its helper agents.",
       "default": true
     },
     "strip": {

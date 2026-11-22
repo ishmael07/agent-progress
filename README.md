@@ -26,6 +26,7 @@ New to Claude Code? The [setup guide](https://ishmael07.github.io/agent-progress
 
 ## What you get
 
+- **Claude's own work too.** A bar labelled Claude while Claude itself works on your request, even with no helper agents.
 - **A labelled bar for each agent, above the prompt.** Each one says which agent it is (its name, or Agent 1, Agent 2…), what it was asked to do, the step it's on ("Step 2 of 4 · Run the tests"), % done and time left.
 - **Plain words.** No tool names or file paths: "Reading the login code", not `Grep auth.ts`.
 - **Click a row** to see how that agent helps with your request, plus its checklist.
@@ -49,6 +50,7 @@ Change these in `/config` under **agent-progress**.
 | Setting | Default | What it does |
 | --- | --- | --- |
 | Ask agents for a step list | On | Adds a short note to each subagent's instructions asking it to share a plain step list and check it off. This is what makes the % accurate. |
+| Show Claude's own work | On | A bar for Claude itself while it works, not just its helper agents. |
 | Plain-language summaries | On | When an agent doesn't say how it helps, Agent Progress writes one sentence about it using Claude Haiku. |
 | Show bars above the prompt | On | The live bars above the prompt. The table works either way. |
 | Notify when agents finish | Off | A system notification when all agents are done. |
