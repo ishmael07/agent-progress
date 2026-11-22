@@ -1,21 +1,5 @@
-// Quiet fade-ins, the reading bar along the top, and copy buttons.
+// Copy buttons, and the small live status line above the headline.
 (() => {
-  const io = new IntersectionObserver((entries) => {
-    for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
-  }, { threshold: 0.12 });
-  document.querySelectorAll('.fade').forEach((el) => io.observe(el));
-
-  const bar = document.querySelector('.reading span');
-  if (bar) {
-    const paint = () => {
-      const max = document.documentElement.scrollHeight - innerHeight;
-      bar.style.width = (max > 0 ? Math.min(100, (scrollY / max) * 100) : 0) + '%';
-    };
-    addEventListener('scroll', paint, { passive: true });
-    addEventListener('resize', paint);
-    paint();
-  }
-
   document.querySelectorAll('[data-copy]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const text = btn.getAttribute('data-copy') || btn.parentElement.querySelector('code').innerText;
@@ -26,4 +10,29 @@
       setTimeout(() => { btn.textContent = was; btn.classList.remove('done'); }, 1500);
     });
   });
+
+  // The same line the plugin draws above the prompt, counting up on a loop.
+  const live = document.querySelector('.live');
+  if (!live) return;
+  const who = live.querySelector('.live-who');
+  const fill = live.querySelector('.live-bar i');
+  const pct = live.querySelector('.live-pct');
+  const left = live.querySelector('.live-left');
+  const RUN = 24; // seconds the pretend batch takes
+
+  const paint = (t) => {
+    const p = Math.min(1, t / RUN);
+    const working = p < 0.45 ? 3 : p < 0.7 ? 2 : p < 1 ? 1 : 0;
+    who.textContent = working ? `Claude + ${working} agent${working > 1 ? 's' : ''} working` : 'All done';
+    fill.style.width = (p * 100).toFixed(1) + '%';
+    live.classList.toggle('is-done', p >= 1);
+    pct.textContent = Math.floor(p * 100) + '%';
+    left.textContent = p >= 1 ? `took ${RUN}s` : `~${Math.max(1, Math.ceil(RUN - t))}s left`;
+  };
+
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { paint(RUN * 0.67); return; }
+  let t = 0;
+  // runs at 3x speed so a whole batch fits in about 8 seconds, then rests on "All done"
+  setInterval(() => { t += 0.3; if (t > RUN + 9) t = 0; paint(Math.min(t, RUN)); }, 100);
+  paint(0);
 })();

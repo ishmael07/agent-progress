@@ -1,8 +1,10 @@
 # Agent Progress
 
-**See what your Claude Code agents are doing.** When Claude splits work across helper agents, you get a live progress bar for each one: what it's working on in plain words, how far along it is, and how long is left.
+**See what your Claude Code agents are doing.** A live progress bar for Claude and every agent it starts: what each is working on in plain words, how far along it is, and how long is left.
 
-![Agent Progress in a terminal](site/assets/v1.1.png)
+![Agent Progress in Claude Code: four agents with live bars above the prompt and the /progress table on the right](site/assets/demo.gif)
+
+<sub>A real session, sped up 6×. [Website](https://ishmael07.github.io/agent-progress/) · [Setup guide](https://ishmael07.github.io/agent-progress/setup.html)</sub>
 
 ## Install
 
