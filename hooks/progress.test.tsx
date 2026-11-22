@@ -32,14 +32,18 @@ const PANE = {
 
 const ORIGIN = { plugin: 'engine', tier: 'core' } as const
 
-const seen = { prompt: '', explainPrompt: '' }
+const seen = { prompt: '', explainPrompt: '', theme: 'dark', opened: [] as unknown[] }
 
 /** Stands in for the engine beneath the mod. */
 function engine(on: On) {
   on('turn.complete', () => ({ text: 'ok' }))
   on('command.register', () => ({ value: { command: 'progress' } }))
   on('tool.register', () => ({ value: { tool: 'mcp__agent-progress__progress' } }))
-  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.open', (_, e) => {
+    seen.opened.push((e as any).backgroundColor)
+    return { value: { isPlaced: true } } as never
+  })
+  on('config.list', () => ({ value: [{ key: 'theme', label: 'Theme', kind: 'enum', value: seen.theme, provider: ORIGIN }] }) as never)
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('prompt.submit', (_, e) => ({ text: e.text }))
   on('tool.call', () => ({ result: {} }))
@@ -100,7 +104,8 @@ test('a subagent shows a plain-language bar that follows its checklist', async (
   const all = await texts(ui)
   expect(all).toContain('1 agent working')
   expect(all).toContain('Build the replay harness')
-  expect(all).toContain('Step 2 of 4 · Write the harness')
+  // the step sits on its own line under the bar
+  expect(all).toMatch(/Step 2 of 4\s+Write the harness/)
   expect(all).not.toContain('general-purpose')
   // 1 of 4 steps done, and the bar has moved on within step 2, short of step 3's mark
   const shown = Number(/ (\d+)%/.exec(all)?.[1])
@@ -173,8 +178,8 @@ test('a finished agent turns done, and the table shows both with an overall bar'
     expect(all).toContain('Agents')
     expect(all).toContain('1 working · 1 done')
     expect(all).toContain('Write the docs')
-    expect(all).toContain('Done')
-    expect(all).toContain('5s')
+    expect(all).toContain('✔')
+    expect(all).toContain('Getting started')
     expect(all).toContain('Fix the tests')
     expect(all).toContain('Overall')
     await ui.unmount()
@@ -400,4 +405,17 @@ test('finished agents show when they finished, and Earlier groups each batch wit
   all = await texts(ui)
   expect(all).toMatch(/Started \d{1,2}:\d{2}.* · finished \d{1,2}:\d{2}.* · took 16s/)
   await ui.unmount()
+})
+
+test('the table sits on the terminal\'s own background, dark or light', async ($, on) => {
+  engine(on)
+  seen.theme = 'dark'
+  seen.opened = []
+  mock.clock(on, { now: 1_000_000 })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.command.run({ command: 'progress', args: '' } as any)
+  seen.theme = 'light'
+  await $.command.run({ command: 'progress', args: '' } as any)
+  expect(seen.opened.filter(Boolean)).toEqual(['transparent', 'transparent'])
+  seen.theme = 'dark'
 })

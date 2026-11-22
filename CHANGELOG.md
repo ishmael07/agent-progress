@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- **Cleaner rows.** Each running agent's step now sits on its own line under its bar ("Step 3 of 5", then the step), so nothing is crammed onto one line.
+
 ## 1.1.0
 
 - **Cleaner look.** A table built from simple two-line cards, with each agent's step and time on one line.

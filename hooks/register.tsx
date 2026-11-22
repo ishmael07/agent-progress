@@ -18,11 +18,6 @@ const FRAME_MS = 250
 const EXPLAIN_AFTER_MS = 4_000
 /** Where `/progress off` is remembered between sessions. */
 const OFF_KEY = 'isOff'
-/**
- * How the table opens: no fill of its own, so it sits on the terminal's own
- * background and follows the person's theme, dark or light.
- */
-const PANE_OPEN = { id: PANE, title: 'Agents', backgroundColor: 'transparent' } as const
 /** A step's length before any step has finished, for the bar's motion. */
 const FIRST_STEP_GUESS_MS = 40_000
 
@@ -281,6 +276,14 @@ function nowDoing(row: Row, now: number): string {
   return row.detail || 'Getting started'
 }
 
+/** The step an agent is on, split so it can sit on a line of its own. */
+export function stepInfo(row: Row): { label: string; text: string } {
+  const at = row.steps.findIndex(s => s.status === 'in_progress')
+  const next = at >= 0 ? at : row.steps.findIndex(s => s.status === 'pending')
+  if (next >= 0) return { label: `Step ${next + 1} of ${row.steps.length}`, text: row.steps[next]!.subject }
+  return { label: '', text: row.kind === 'workflow' ? row.detail || 'Working' : row.detail || 'Getting started' }
+}
+
 /** The time on the right of a row: what's left when known, else how long so far. */
 function clock(row: Row, all: readonly Row[], now: number): string {
   if (!isLive(row)) return duration((row.endedAt ?? now) - row.startedAt)
@@ -389,6 +392,15 @@ export function sentence(text: string): string {
 // ---------------------------------------------------------------- state changes
 
 /** Applies `fn` to the row `id`; `make` builds it first when missing. */
+/**
+ * How the table opens: no fill of its own, so it sits on the terminal's own
+ * background. (A solid color fills only the body; Claude Code keeps its own
+ * frame around it, so a darker fill shows as a box inside a gray frame.)
+ */
+async function paneOpenArgs(_$: EngineInterface) {
+  return { id: PANE, title: 'Agents', backgroundColor: 'transparent' } as const
+}
+
 async function touch($: EngineInterface, id: string, fn: (row: Row) => Row, make?: () => Row) {
   await update($, rowsAtom, rows => {
     const at = rows.findIndex(r => r.id === id)
@@ -544,7 +556,7 @@ export const register: Register = (on, options) => {
     }
     // A table already open from before this load gets the current look.
     try {
-      if ((await $.ui.panes()).some(p => p.id === PANE)) void $.ui.open(PANE_OPEN)
+      if ((await $.ui.panes()).some(p => p.id === PANE)) void $.ui.open(await paneOpenArgs($))
     } catch {
       // no surface to ask yet; the next open sets it
     }
@@ -794,7 +806,7 @@ export const register: Register = (on, options) => {
       return { text: 'Use `/progress` to see your agents, or `/progress on | off | toggle | explain | clear`.' }
     }
     // the live bars draw right here in the chat (below), and the table opens on the side
-    void $.ui.open(PANE_OPEN)
+    void $.ui.open(await paneOpenArgs($))
     return { text: plainTable(await read($, rowsAtom), await $.clock.now()) }
   })
 
@@ -822,8 +834,9 @@ export const register: Register = (on, options) => {
     const labels = labelsFor(rows, now)
     const tagW = labelWidth(labels, shown)
     const barW = W >= 110 ? 22 : W >= 80 ? 16 : 10
-    const titleW = Math.min(38, Math.max(14, Math.floor(W * 0.3)))
-    const restW = Math.max(0, W - 2 - (tagW + 2) - titleW - 2 - barW - 6 - 2)
+    const titleW = Math.min(44, Math.max(14, Math.floor(W * 0.34)))
+    const restW = Math.max(0, W - 2 - (tagW + 2) - titleW - 2 - barW - 6 - 3)
+    const indent = 2 + tagW + 2
     return (
       <Box flexDirection="column">
         <Text dimColor>
@@ -834,18 +847,21 @@ export const register: Register = (on, options) => {
         {shown.map(row => {
           const m = measure(row, rows, now)
           const g = glyph(row.status, now)
-          const right = isLive(row) ? `${nowDoing(row, now)} · ${clock(row, rows, now)}` : nowDoing(row, now)
+          const right = isLive(row) ? clock(row, rows, now) : nowDoing(row, now)
           return (
-            <Text wrap="truncate">
-              <Text color={g.color}>{g.text} </Text>
-              <Text dimColor>{fit(labels.get(row.id) ?? '', tagW)}{'  '}</Text>
-              <Text bold={isLive(row)} dimColor={!isLive(row)}>
-                {fit(row.title, titleW)}{'  '}
+            <Box flexDirection="column">
+              <Text wrap="truncate">
+                <Text color={g.color}>{g.text} </Text>
+                <Text dimColor>{fit(labels.get(row.id) ?? '', tagW)}{'  '}</Text>
+                <Text bold={isLive(row)} dimColor={!isLive(row)}>
+                  {fit(row.title, titleW)}{'  '}
+                </Text>
+                {bar(Text, m.value, barW, fillColor(row.status), isLive(row), now)}
+                <Text dimColor={!isLive(row)}> {pct(m).padStart(4)}   </Text>
+                {restW > 6 ? <Text dimColor>{fit(right, restW)}</Text> : ''}
               </Text>
-              {bar(Text, m.value, barW, fillColor(row.status), isLive(row), now)}
-              <Text dimColor={!isLive(row)}> {pct(m).padStart(4)}  </Text>
-              {restW > 8 ? <Text dimColor>{fit(right, restW)}</Text> : ''}
-            </Text>
+              {isLive(row) && stepRow(Text, row, indent)}
+            </Box>
           )
         })}
       </Box>
@@ -876,8 +892,9 @@ export const register: Register = (on, options) => {
     const labels = labelsFor(rows, now)
     const tagW = labelWidth(labels, shown)
     const barW = W >= 120 ? 24 : W >= 90 ? 16 : 10
-    const titleW = Math.min(38, Math.max(14, Math.floor(W * 0.28)))
-    const restW = Math.max(0, W - 2 - (tagW + 2) - titleW - 2 - barW - 1 - 4 - 2)
+    const titleW = Math.min(44, Math.max(14, Math.floor(W * 0.34)))
+    const restW = Math.max(0, W - 2 - (tagW + 2) - titleW - 2 - barW - 1 - 4 - 3)
+    const indent = 2 + tagW + 2
 
     const running = shown.filter(isLive).length
     const head =
@@ -889,15 +906,17 @@ export const register: Register = (on, options) => {
     const lines: RenderNode[] = []
     let more = 0
     for (const row of shown) {
-      if (room < 1) {
+      // a running agent takes two lines: its bar, and the step it's on underneath
+      const need = isLive(row) ? 2 : 1
+      if (room < need) {
         more += 1
         continue
       }
-      room -= 1
+      room -= need
       const isOpen = isExplained || expanded.includes(row.id)
       const m = measure(row, rows, now)
       const g = glyph(row.status, now)
-      const right = isLive(row) ? `${nowDoing(row, now)} · ${clock(row, rows, now)}` : nowDoing(row, now)
+      const right = isLive(row) ? clock(row, rows, now) : nowDoing(row, now)
       lines.push(
         <Button key={row.id} plain onPress={() => update($, expandedAtom, toggle(row.id))}>
           <Text color={g.color}>{g.text} </Text>
@@ -906,30 +925,31 @@ export const register: Register = (on, options) => {
             {fit(row.title, titleW)}{'  '}
           </Text>
           {bar(Text, m.value, barW, fillColor(row.status), isLive(row), now)}
-          <Text dimColor={!isLive(row)}> {pct(m).padStart(4)}  </Text>
-          {restW > 8 ? <Text dimColor>{fit(right, restW)}</Text> : ''}
+          <Text dimColor={!isLive(row)}> {pct(m).padStart(4)}   </Text>
+          {restW > 6 ? <Text dimColor>{fit(right, restW)}</Text> : ''}
         </Button>,
       )
+      if (isLive(row)) lines.push(stepRow(Text, row, indent))
       const extra = (row.purpose || settings.summaries ? 1 : 0) + (row.steps.length ? 1 : 0)
       if (isOpen && extra > 0 && room >= extra) {
         room -= extra
         if (row.purpose || settings.summaries) {
           lines.push(
             <Text wrap="truncate">
-              {'  '}
+              {' '.repeat(indent)}
               <Text italic dimColor={!row.purpose}>
                 {row.purpose ?? 'Writing a plain summary…'}
               </Text>
             </Text>,
           )
         }
-        if (row.steps.length) lines.push(stepLine(Text, row, W - 2))
+        if (row.steps.length) lines.push(stepLine(Text, row, W - indent, indent))
       }
     }
 
     return (
       <Box flexDirection="column">
-        <Button key="open-table" plain onPress={() => void $.ui.open(PANE_OPEN)}>
+        <Button key="open-table" plain onPress={() => void paneOpenArgs($).then(args => $.ui.open(args))}>
           <Text dimColor>{head}</Text>
         </Button>
         {lines}
@@ -1000,9 +1020,10 @@ export const register: Register = (on, options) => {
           <Text wrap="truncate">
             {pad}
             {bar(Text, m.value, barW, fillColor(row.status), isLive(row), now)}
-            <Text dimColor={!isLive(row)}> {pct(m).padStart(4)}  </Text>
-            <Text dimColor>{row.status === 'done' ? 'Done' : nowDoing(row, now)}</Text>
+            <Text dimColor={!isLive(row)}> {pct(m).padStart(4)}</Text>
+            {row.status === 'failed' || row.status === 'stopped' ? <Text dimColor>{'   ' + nowDoing(row, now)}</Text> : ''}
           </Text>
+          {isLive(row) && stepRow(Text, row, pad.length)}
           {isOpen && (
             <Text dimColor wrap="truncate">
               {pad}
@@ -1154,8 +1175,21 @@ function bar(T: unknown, value: number, width: number, color: string, isMoving: 
   )
 }
 
+/** The step an agent is on, on its own line: "Step 3 of 5", then the step. */
+function stepRow(T: unknown, row: Row, indent: number) {
+  const Text = T as TextEl
+  const s = stepInfo(row)
+  return (
+    <Text wrap="truncate">
+      {' '.repeat(indent)}
+      {s.label ? <Text dimColor>{s.label + '   '}</Text> : ''}
+      <Text dimColor={!s.label}>{s.text}</Text>
+    </Text>
+  )
+}
+
 /** The checklist on one line: ✔ done · › under way · ○ still to do. */
-function stepLine(T: unknown, row: Row, width: number) {
+function stepLine(T: unknown, row: Row, width: number, indent = 2) {
   const Text = T as TextEl
   let left = width
   const parts: RenderNode[] = []
@@ -1173,7 +1207,7 @@ function stepLine(T: unknown, row: Row, width: number) {
   }
   return (
     <Text wrap="truncate">
-      {'  '}
+      {' '.repeat(indent)}
       {parts}
     </Text>
   )

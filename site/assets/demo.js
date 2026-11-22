@@ -121,10 +121,10 @@
   }
 
   function rightText(a, s) {
-    if (s.finished) return `Done in ${dur(s.took)}`;
-    const step = `Step ${s.current + 1} of ${s.total} · ${a.steps[s.current]}`;
-    return `${step} · ${left(s.eta) || dur(s.e)}`;
+    return s.finished ? `Done in ${dur(s.took)}` : left(s.eta) || dur(s.e);
   }
+  const stepLine = (a, s, indent) =>
+    `<div class="r step" style="padding-left:${indent}ch"><span class="c-dim">Step ${s.current + 1} of ${s.total}</span>   ${esc(a.steps[s.current])}</div>`;
 
   function overall(t) {
     const ss = AGENTS.map(a => state(a, t)).filter(Boolean);
@@ -143,7 +143,7 @@
     const head = (all.running ? `${all.running} agents working · ${Math.round(all.value * 100)}%` : 'All done') +
       (all.eta !== undefined ? ` · ${left(all.eta)}` : '');
     const barW = cols >= 110 ? 22 : cols >= 80 ? 14 : 10;
-    const titleW = Math.min(34, Math.max(12, Math.floor(cols * 0.27)));
+    const titleW = Math.min(40, Math.max(12, Math.floor(cols * 0.33)));
     const restW = Math.max(0, cols - 4 - 9 - titleW - 2 - barW - 6 - 2);
     let html = `<div class="head" data-open-table>${esc(head)}</div>`;
     for (const a of visible) {
@@ -152,7 +152,8 @@
       const g = s.finished ? '<span class="c-green">✔</span>' : `<span class="c-blue">${SPIN[Math.floor(ms / 100) % 10]}</span>`;
       const title = `<span class="${s.finished ? 'c-dim' : 'c-bold'}">${esc(fit(a.title, titleW))}</span>`;
       const pct = `<span class="${s.finished ? 'c-dim' : ''}">${String(Math.round(s.value * 100) + '%').padStart(5)}</span>`;
-      html += `<div class="r${isOpen ? ' hot' : ''}" data-id="${a.id}">${g} <span class="c-dim">${a.label}</span>  ${title}  ${bar(s.value, barW, s.finished ? 'c-green' : 'c-blue', !s.finished, ms)}${pct}  <span class="c-dim">${esc(fit(rightText(a, s), restW))}</span></div>`;
+      html += `<div class="r${isOpen ? ' hot' : ''}" data-id="${a.id}">${g} <span class="c-dim">${a.label}</span>  ${title}  ${bar(s.value, barW, s.finished ? 'c-green' : 'c-blue', !s.finished, ms)}${pct}   <span class="c-dim">${esc(fit(rightText(a, s), restW))}</span></div>`;
+      if (!s.finished) html += stepLine(a, s, 11);
       if (isOpen) {
         html += `<div class="sub"><i>${esc(a.purpose)}</i></div>`;
         html += `<div class="sub">${a.steps.map((st, i) => {
@@ -181,9 +182,9 @@
       const isOpen = open.has(a.id);
       const g = s.finished ? '<span class="c-green">✔</span>' : `<span class="c-blue">${SPIN[Math.floor(ms / 100) % 10]}</span>`;
       const time = s.finished ? dur(s.took) : left(s.eta) || dur(s.e);
-      const now = s.finished ? `Done in ${dur(s.took)}` : `Step ${s.current + 1} of ${s.total} · ${a.steps[s.current]}`;
       html += `<div class="card"><div class="r${isOpen ? ' hot' : ''}" data-id="${a.id}"><span class="t"><span class="c-dim">${isOpen ? '▾' : '▸'}</span> ${g} <span class="c-dim">${a.label} · </span><span class="${s.finished ? 'c-dim' : 'c-bold'}">${esc(a.title)}</span></span><span class="c-dim">${time}</span></div>` +
-        `<div class="line2">${bar(s.value, barW, s.finished ? 'c-green' : 'c-blue', !s.finished, ms)}<span class="${s.finished ? 'c-dim' : ''}">${String(Math.round(s.value * 100) + '%').padStart(5)}</span>  <span class="c-dim">${esc(now)}</span></div>`;
+        `<div class="line2">${bar(s.value, barW, s.finished ? 'c-green' : 'c-blue', !s.finished, ms)}<span class="${s.finished ? 'c-dim' : ''}">${String(Math.round(s.value * 100) + '%').padStart(5)}</span></div>` +
+        (s.finished ? '' : `<div class="line2"><span class="c-dim">Step ${s.current + 1} of ${s.total}</span>   ${esc(a.steps[s.current])}</div>`);
       if (isOpen) {
         html += `<div class="detail"><i>${esc(a.purpose)}</i></div>` + a.steps.map((st, i) => {
           const g2 = i < s.done || s.finished ? '<span class="c-green">✔</span>' : i === s.current ? '<span class="c-blue">›</span>' : '<span class="c-faint">○</span>';
