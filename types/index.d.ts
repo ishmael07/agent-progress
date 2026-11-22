@@ -9,6 +9,8 @@ export type Row = {
   kind: 'agent' | 'workflow' | 'main'
   /** what it was asked to do, in a few words */
   title: string
+  /** the agent's own name, or its kind when it's a special one (Explore, Plan, …) */
+  label?: string
   /** its name or workflow name, if it has one */
   task: string
   /** what it is doing right now (its last action) */
@@ -43,6 +45,10 @@ declare module 'claude-code' {
       expanded: string[]
       /** show every row opened */
       isExplained: boolean
+      /** show the rows of earlier batches in the table */
+      showEarlier: boolean
+      /** the batch whose "all done" notice has been shown */
+      announcedBatch: number
     }
   }
 }

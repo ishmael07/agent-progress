@@ -1,12 +1,46 @@
 {
   "name": "agent-progress",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Live progress bars for your Claude Code agents: what each one is doing in plain words, how far along it is, and how long is left.",
   "author": {
     "name": "ishmael07",
     "url": "https://github.com/ishmael07"
   },
+  "homepage": "https://ishmael07.github.io/agent-progress/",
   "repository": "https://github.com/ishmael07/agent-progress",
   "license": "MIT",
-  "types": "./types/index.d.ts"
+  "keywords": [
+    "agents",
+    "subagents",
+    "progress",
+    "workflow",
+    "ui"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "checklists": {
+      "type": "boolean",
+      "title": "Ask agents for a step list",
+      "description": "Adds a short note to each subagent asking it to share a plain step list and tick steps off. This is what makes the % accurate.",
+      "default": true
+    },
+    "summaries": {
+      "type": "boolean",
+      "title": "Plain-language summaries",
+      "description": "When an agent doesn't say how it helps, Agent Progress writes one sentence about it using Claude Haiku (one small call per agent).",
+      "default": true
+    },
+    "strip": {
+      "type": "boolean",
+      "title": "Show bars above the prompt",
+      "description": "Show a live bar for each running agent above the prompt. The /progress table works either way.",
+      "default": true
+    },
+    "notify": {
+      "type": "boolean",
+      "title": "Notify when agents finish",
+      "description": "Send a system notification when all your agents are done.",
+      "default": false
+    }
+  }
 }

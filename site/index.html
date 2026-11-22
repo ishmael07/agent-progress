@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Progress · See what your Claude Code agents are doing</title>
+  <meta name="description" content="Live progress bars for your Claude Code agents: what each one is doing in plain words, how far along it is, and how long is left.">
+  <meta property="og:title" content="Agent Progress for Claude Code">
+  <meta property="og:description" content="See what your agents are doing: plain words, live progress, time left.">
+  <meta property="og:image" content="https://ishmael07.github.io/agent-progress/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="./"><img class="brand-mark" src="assets/mark.svg" alt=""> Agent Progress</a>
+    <div class="nav-links">
+      <a href="#use">Commands</a>
+      <a href="setup.html">Setup</a>
+      <a href="https://github.com/ishmael07/agent-progress">GitHub</a>
+    </div>
+  </nav>
+
+  <header class="hero wrap center">
+    <h1 data-words>See what your agents <span class="soft">are actually doing.</span></h1>
+    <p class="lede reveal d2">Live progress bars for Claude Code. What every agent is working on in plain words, how far along it is, and how long is left.</p>
+    <div class="actions reveal d3">
+      <a class="btn btn-primary" href="#install">Install</a>
+      <a class="btn btn-ghost" href="https://github.com/ishmael07/agent-progress">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+
+    <div class="stage reveal d3">
+      <div class="term-wrap" id="demo">
+        <div class="term">
+          <div class="term-bar"><div class="lights"><i></i><i></i><i></i></div><div class="term-title">tic-tac-toe — claude</div></div>
+          <div class="term-body">
+            <div class="col">
+              <div class="log"></div>
+              <div class="band"></div>
+              <div class="prompt"><span>›</span><span class="caret"></span></div>
+            </div>
+            <div class="col pane-col"><div class="pane"></div></div>
+          </div>
+        </div>
+        <div class="toast"></div>
+        <svg class="cursor" viewBox="0 0 24 24"><path d="M4 2l15 11-6.5 1.2L16 21l-3 1.4-3.4-6.9L4 20z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <section class="wrap center">
+    <h2 class="reveal">No more staring at “working…”</h2>
+    <div class="features">
+      <div class="feature reveal d1">
+        <div class="num">01</div>
+        <h3>Plain words</h3>
+        <p>Each bar says which agent it is, what it was asked to do and the step it's on. “Reading the login code”, not a wall of tool calls.</p>
+      </div>
+      <div class="feature reveal d2">
+        <div class="num">02</div>
+        <h3>Progress and time left</h3>
+        <p>A % for every agent, an overall bar, and an estimate of time left based on how long its steps take.</p>
+      </div>
+      <div class="feature reveal d3">
+        <div class="num">03</div>
+        <h3>Click to see why</h3>
+        <p>Click a row to see how that agent helps with your request, plus its checklist ticking off as it goes.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap center" id="use">
+    <h2 class="reveal">How to use it</h2>
+    <p class="lede reveal d1">It works on its own once it's installed. These are here when you want more.</p>
+    <div class="cmds reveal d2">
+      <div class="cmdrow"><code>/progress</code><span>See every agent's progress right in the chat, and open the table on the side. Works even while Claude is busy.</span></div>
+      <div class="cmdrow"><code>/progress explain</code><span>Open every agent to see how it helps and its checklist. Run it again to fold them.</span></div>
+      <div class="cmdrow"><code>/progress off</code><span>Stop the bars from popping up on their own. It's remembered next time.</span></div>
+      <div class="cmdrow"><code>/progress on</code><span>Bring them back. <code class="inline">/progress toggle</code> flips between on and off.</span></div>
+      <div class="cmdrow"><code>/progress clear</code><span>Clear finished agents from the list.</span></div>
+      <div class="cmdrow"><code class="click">Click a row</code><span>Open that agent: how it helps your request, its checklist, and when it started and finished.</span></div>
+      <div class="cmdrow"><code>/config</code><span>Turn the step lists, plain-language summaries, bars and the done notification on or off.</span></div>
+    </div>
+  </section>
+
+  <section class="wrap center" id="new">
+    <h2 class="reveal">What's new in 1.1</h2>
+    <p class="lede reveal d1">A cleaner look, better time estimates and less clutter.</p>
+    <div class="versions">
+      <figure class="shot reveal d1" style="margin:0">
+        <div class="tag"><b>1.0</b><span>First release</span></div>
+        <img src="assets/v1.0.png" alt="Agent Progress 1.0: the table of agents with block bars" loading="lazy">
+      </figure>
+      <figure class="shot reveal d2" style="margin:0">
+        <div class="tag"><b>1.1</b><span>Today</span></div>
+        <img src="assets/v1.1.png" alt="Agent Progress 1.1: simple cards with steps and time left" loading="lazy">
+      </figure>
+    </div>
+    <div class="changes reveal">
+      <div><b>Simple two-line cards. <span>What it's on, the step it's at and the time, easy to read at a glance.</span></b></div>
+      <div><b>Better time left. <span>Shown after an agent finishes its first step, counting down at its own pace.</span></b></div>
+      <div><b>Earlier agents fold away. <span>The table shows what's happening now.</span></b></div>
+      <div><b>A done notice and settings. <span>Turn each part on or off in /config.</span></b></div>
+      <div><b>/progress, anytime. <span>Runs even while Claude is busy, and shows the bars right in the chat.</span></b></div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="install center reveal">
+      <h2>Add it to Claude Code</h2>
+      <p class="lede">One line in any Claude Code session. It starts working right away.</p>
+      <div class="cmd"><code><span class="p">›</span>/plugin install agent-progress --marketplace ishmael07/agent-progress</code><button class="copy" data-copy="/plugin install agent-progress --marketplace ishmael07/agent-progress">Copy</button></div>
+      <div class="steps">
+        <div><b>1. Open Claude Code</b>In any project, in your terminal.</div>
+        <div><b>2. Paste the line</b>Press <code style="color:#fff">y</code> to add the marketplace, then Enter.</div>
+        <div><b>3. Run some agents</b>Bars show up the moment one starts.</div>
+      </div>
+      <p class="more">New to Claude Code? <a href="setup.html">Set it up from scratch →</a></p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span>Agent Progress · MIT · Not affiliated with Anthropic</span>
+      <span><a href="setup.html">Setup</a> &nbsp;·&nbsp; <a href="https://github.com/ishmael07/agent-progress">GitHub</a></span>
+    </div>
+  </footer>
+
+  <script src="assets/site.js"></script>
+  <script src="assets/demo.js"></script>
+</body>
+</html>
